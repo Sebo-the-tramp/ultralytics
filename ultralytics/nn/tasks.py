@@ -18,6 +18,9 @@ from ultralytics.yolo.utils.plotting import feature_visualization
 from ultralytics.yolo.utils.torch_utils import (fuse_conv_and_bn, fuse_deconv_and_bn, initialize_weights,
                                                 intersect_dicts, make_divisible, model_info, scale_img, time_sync)
 
+
+from micromind import PhiNet
+
 try:
     import thop
 except ImportError:
@@ -598,7 +601,44 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
-    for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
+        
+    # layers phinet ------------------------------------
+    model = PhiNet(
+            input_shape=(3,320,320),
+            alpha=2.67,
+            num_layers=6,
+            beta=1,
+            t_zero=4,
+            include_top=False,
+            num_classes=nc,
+            compatibility=False,
+        )
+
+    for i, layer in enumerate(model._layers):        
+        f = -1
+        n = n_ = 1
+        args = [2.67, 1, 4]
+        t = str(layer.__class__).replace("<class '",'').replace("'>",'')       
+        # get the shape
+        
+        
+        #t = str(m)[8:-2].replace('__main__.', '')  # module type
+        layer.np = sum(x.numel() for x in layer.parameters())  # number params
+        #m_.i, m_.f, m_.type = i, f, t  # attach index, 'from' index, type
+        if verbose:    
+            LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{layer.np:10.0f}  {t:<45}{str(args):<30}')  # print            
+
+        c2 = ch[f]
+        if i == 0:
+            ch = []        
+        ch.append(c2)
+
+    layers = list(model._layers)
+    # layers phinet ------------------------------------ 
+
+
+    #for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
+    for i, (f, n, m, args) in enumerate(d['head'], len(layers)):  # from, number, module, args
         m = getattr(torch.nn, m[3:]) if 'nn.' in m else globals()[m]  # get module
         for j, a in enumerate(args):
             if isinstance(a, str):
@@ -644,8 +684,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{m.np:10.0f}  {t:<45}{str(args):<30}')  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
-        if i == 0:
-            ch = []
+        
         ch.append(c2)
     return nn.Sequential(*layers), sorted(save)
 
