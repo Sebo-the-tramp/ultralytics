@@ -576,6 +576,15 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     # Return model and ckpt
     return model, ckpt
 
+def get_output_dim(data_config, model):     
+    """Returns intermediate representations shapes."""     
+    x = torch.randn(*[1] + list(data_config["input_size"]))
+    out_dim = [model._layers[0](x)]     
+    names = [model._layers[0].__class__]     
+    for layer in model._layers[1:]:         
+        out_dim.append(layer(out_dim[-1]))
+        names.append(layer.__class__)
+    return [list(o.shape)[1:] for o in out_dim], names
 
 def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     # Parse a YOLO model.yaml dictionary into a PyTorch model
@@ -614,24 +623,31 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             compatibility=False,
         )
 
+    data_config = {"input_size":(3,320,320)}
+    res = get_output_dim(data_config, model)    
+
     for i, layer in enumerate(model._layers):        
         f = -1
         n = n_ = 1
-        args = [2.67, 1, 4]
+        args = [2.67, 1, 4] + res[0][i]
         t = str(layer.__class__).replace("<class '",'').replace("'>",'')       
         # get the shape
         
         
         #t = str(m)[8:-2].replace('__main__.', '')  # module type
         layer.np = sum(x.numel() for x in layer.parameters())  # number params
-        #m_.i, m_.f, m_.type = i, f, t  # attach index, 'from' index, type
-        if verbose:    
+        layer.i, layer.f, layer.type = i, f, t  # attach index, 'from' index, type
+        if verbose:
             LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{layer.np:10.0f}  {t:<45}{str(args):<30}')  # print            
 
         c2 = ch[f]
         if i == 0:
-            ch = []        
-        ch.append(c2)
+            ch = []
+        # da refactorizzare
+        try:
+            ch.append(layer.num_filters)
+        except:
+            ch.append(c2) # take the number of layers
 
     layers = list(model._layers)
     # layers phinet ------------------------------------ 
