@@ -643,9 +643,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         c2 = ch[f]
         if i == 0:
             ch = []
+
         # da refactorizzare
         try:
-            ch.append(layer.num_filters)
+            ch.append(res[0][i-1][0])
         except:
             ch.append(c2) # take the number of layers
 
