@@ -611,7 +611,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
         
-    # layers phinet ------------------------------------
+    # START layers phinet ------------------------------------
     model = PhiNet(
             input_shape=(3,320,320),
             alpha=2.67,
@@ -623,6 +623,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             compatibility=False,
         )
 
+
+    # maybe we can take away this code?
     data_config = {"input_size":(3,320,320)}
     res = get_output_dim(data_config, model)    
 
@@ -651,8 +653,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             ch.append(c2) # take the number of layers
 
     layers = list(model._layers)
-    # layers phinet ------------------------------------ 
-
+    # END layers phinet ------------------------------------ 
 
     #for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
     for i, (f, n, m, args) in enumerate(d['head'], len(layers)):  # from, number, module, args
