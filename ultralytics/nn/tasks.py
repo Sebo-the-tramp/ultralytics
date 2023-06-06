@@ -655,6 +655,18 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
     layers = list(model._layers)
     # END layers phinet ------------------------------------ 
 
+
+    # START HARDCODED detection head ------------------------------------
+    # reading from the yolov8.yaml file
+
+    layers.append(nn.Upsample)
+    layers.append(Concat)
+    layers.append(C2f)
+    
+
+
+    # END HARDCODED detection head ------------------------------------
+
     #for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
     for i, (f, n, m, args) in enumerate(d['head'], len(layers)):  # from, number, module, args
         m = getattr(torch.nn, m[3:]) if 'nn.' in m else globals()[m]  # get module
